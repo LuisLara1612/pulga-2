@@ -231,3 +231,58 @@ test('habilidades del joven: metas 3, 6 y 9 en orden, y se conservan',()=>{
   e.energia=100;assert.equal(C.usarHabilidad(e,'coraza'),'ok');assert.equal(e.energia,100-R.COSTO.coraza);
   const f=partida().e;assert.equal(C.usarHabilidad(f,'salto'),'bloqueada');
 });
+
+/* ---------- Modo Primera persona: una sola cabeza ---------- */
+test('huespedes omite la mascota cuando no hay',()=>{
+  const e=C.nuevaCabeza('joven',C.azar(1));
+  assert.deepEqual(C.huespedes(e),C.PERSONAS);
+  assert.equal(C.huespedes(partida().e).length,6);
+});
+
+test('nuevaCabeza: 1 adulta en la cabeza elegida y un solo baño en la cola, a las 12:00',()=>{
+  const e=C.nuevaCabeza('nina',C.azar(2));
+  assert.equal(e.mascota,null);
+  C.PERSONAS.forEach(id=>{assert.equal(e.hu[id].adultas,id==='nina'?1:0,id);assert.equal(e.hu[id].huevos,0)});
+  assert.equal(e.cola.length,1);
+  assert.deepEqual([e.cola[0].tipo,e.cola[0].id,e.cola[0].t],['bano','nina',m(1,12)]);
+  assert.throws(()=>C.nuevaCabeza('perro',C.azar(1)));
+});
+
+test('nuevaCabeza: baños a las 12:00 y luego cada 23 h, sin contactos, días ni veterinario',()=>{
+  const rng=C.azar(3),e=C.nuevaCabeza('nino',rng),banos=[],otros=new Set();
+  for(let i=0;i<3*1440;i++){
+    C.avanzar(e,1,rng,'nino').forEach(x=>{if(x.tipo==='bano')banos.push(e.min);else if(!['hora','bano-fin','peinado'].includes(x.tipo))otros.add(x.tipo)});
+  }
+  assert.deepEqual(banos,[m(1,12),m(1,12)+23*60,m(1,12)+46*60]);
+  assert.deepEqual([...otros],[]);
+  assert.equal(e.hu.nino.adultas,1,'la cabeza activa no usa la versión estadística');
+});
+
+test('nuevaCabeza: el joven no desbloquea habilidades',()=>{
+  const rng=C.azar(4),e=C.nuevaCabeza('joven',rng);
+  e.hu.joven.adultas=12;
+  const ev=C.avanzar(e,120,rng,'joven');
+  assert.ok(!ev.some(x=>x.tipo==='habilidad'));
+  assert.ok(!C.HABILIDADES.some(h=>e.hab[h]));
+});
+
+test('metaCabeza: victoria, 12 adultas con 1 baño y derrota',()=>{
+  const e=C.nuevaCabeza('mama',C.azar(5)),hu=e.hu.mama;
+  assert.equal(R.FP_BANOS,2);assert.equal(R.FP_ADULTAS,10);
+  hu.adultas=12;
+  assert.equal(C.metaCabeza(e,'mama',1),null,'12 adultas con 1 baño: sigue');
+  assert.equal(C.metaCabeza(e,'mama',2),'victoria');
+  hu.adultas=9;assert.equal(C.metaCabeza(e,'mama',2),null);
+  hu.adultas=10;assert.equal(C.metaCabeza(e,'mama',2),'victoria');
+  hu.adultas=0;hu.huevos=2;assert.equal(C.metaCabeza(e,'mama',2),null,'sin adultas pero con huevos: sigue');
+  hu.huevos=0;assert.equal(C.metaCabeza(e,'mama',0),'derrota');
+});
+
+test('rotarEntrada: con la mirada 90 grados a la derecha, adelante es la derecha del mundo',()=>{
+  const cerca=(a,b)=>assert.ok(Math.abs(a.x-b.x)<1e-9&&Math.abs(a.y-b.y)<1e-9,JSON.stringify([a,b]));
+  cerca(C.rotarEntrada({x:0,y:-1},0),{x:0,y:-1});
+  cerca(C.rotarEntrada({x:0,y:-1},Math.PI/2),{x:1,y:0});
+  cerca(C.rotarEntrada({x:1,y:0},Math.PI/2),{x:0,y:1});
+  cerca(C.rotarEntrada({x:0,y:-1},Math.PI),{x:0,y:1});
+  cerca(C.rotarEntrada({x:0,y:0},1.3),{x:0,y:0});
+});

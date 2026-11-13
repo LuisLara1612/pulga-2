@@ -27,8 +27,13 @@ Documento original: https://claude.ai/artifact/L8VWM9v7pUz4g4eNstveAL
 
 ## 4. Modo primera persona
 
-Modo aparte en 3D para recorrer una cabeza desde los ojos de la pulga. La vista desde arriba sigue siendo el modo de estrategia. Queda para un cambio aparte: el modo Casa ya está implementado sin él.
+Modo aparte en 3D para recorrer una cabeza desde los ojos de la pulga: el pelo es un bosque, las uñas caen del cielo y el champú es una inundación. La vista desde arriba sigue siendo el modo de estrategia.
+
+Implementado como modo **Primera persona**: eliges una cabeza de la familia y ganas si sobrevives 2 baños y juntas 10 pulgas adultas. Usa las mismas reglas del modo Casa para esa cabeza y no toca las partidas guardadas. No incluye mascotas, saltos entre cabezas ni habilidades.
 
 ## Estado
 
-Implementado como modo **Casa** (el juego de niveles sigue disponible como modo **Clásico**). Plan completo en OpenSpec: `openspec/changes/casa-con-familia/`.
+- Secciones 1 a 3: implementadas como modo **Casa** (el juego de niveles sigue disponible como modo **Clásico**).
+- Sección 4: implementada como modo **Primera persona**.
+
+Los planes completos están en OpenSpec, en la carpeta `openspec/changes/` que está junto a `pulga-2` (fuera de este repositorio): `casa-con-familia/` y `modo-primera-persona/`.

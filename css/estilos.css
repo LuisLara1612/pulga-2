@@ -141,3 +141,22 @@ p{margin:0}
 .pets button b{font-family:var(--display);font-weight:400;font-size:19px}
 .pets button span{font-size:13.5px;color:var(--papel-2)}
 .avisos li.nota{background:rgba(248,232,216,.1);color:var(--papel);font-weight:400}
+
+/* Primera persona: la vista 3D ocupa la pantalla; el HUD y los botones quedan encima */
+.fp-el{display:none}
+#app.fp .fp-el{display:block}
+#app.fp #game{visibility:hidden}
+canvas#fp{position:absolute;inset:0;width:100%;height:100%;z-index:1;touch-action:none;cursor:grab}
+.fp-tinte{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .18s}
+#fpPica{background:radial-gradient(ellipse at 50% 62%,rgba(224,33,63,0) 30%,rgba(224,33,63,.75) 100%)}
+#fpOculta{background:radial-gradient(ellipse at 50% 55%,rgba(10,4,3,.25) 12%,rgba(10,4,3,.96) 88%)}
+#fpAgua{background:linear-gradient(180deg,rgba(198,241,239,.9),rgba(120,200,210,.75))}
+#fpMapa{position:absolute;z-index:3;top:150px;right:max(12px,env(safe-area-inset-right,0px));width:110px;height:110px;border-radius:50%;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+#fpJoy{position:absolute;z-index:2;left:0;top:0;width:60px;height:60px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(248,232,216,.55);pointer-events:none}
+#fpJoy i{position:absolute;left:18px;top:18px;width:24px;height:24px;border-radius:50%;background:rgba(248,232,216,.5)}
+#fpFlechas{position:absolute;inset:0;z-index:2;pointer-events:none}
+#fpFlechas i{position:absolute;left:-15px;top:-15px;width:30px;height:30px;background:var(--sangre);clip-path:polygon(50% 0,100% 100%,50% 72%,0 100%);filter:drop-shadow(0 0 3px #000)}
+#fpFlechas i.refugio{background:#73f082}
+/* el aviso deja libre la esquina del minimapa */
+#app.fp #toast{left:max(16px,env(safe-area-inset-left,0px));transform:none;max-width:calc(100% - 152px);text-align:left}
+@media (prefers-reduced-motion:reduce){.fp-tinte{transition:none}}

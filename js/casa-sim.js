@@ -15,6 +15,7 @@ const REGLAS={
   DUR_ADULTO:.6, DUR_HURON:.6, CONTACTO_P:.85,
   METAS_JOVEN:[3,6,9], ENERGIA_INICIO:40, ENERGIA_H:3, ENERGIA_SUDOR:35,
   COSTO:{coraza:40,salto:30,camuflaje:35},
+  FP_BANOS:2, FP_ADULTAS:10, FP_PRIMER_BANO_H:6,   /* modo Primera persona */
   grupos:{
     nino:{contagio:.32,dispersion:.45,comida:1.3,banoMuerte:.88},
     joven:{contagio:.18,dispersion:.22,comida:1,banoMuerte:.7},
@@ -109,7 +110,27 @@ function nueva(mascota,rng){
   agendar(e,{t:1440,tipo:'dia'});
   return e;
 }
-const huespedes=e=>[...PERSONAS,e.mascota];
+/* Partida de una sola cabeza (modo Primera persona): sin mascota, contactos, días ni veterinario. */
+function nuevaCabeza(id,rng){
+  if(!PERSONAS.includes(id))throw new Error('Cabeza desconocida: '+id);
+  const R=REGLAS,e={version:1,soloCabeza:true,min:R.INICIO_MIN,horaHecha:Math.floor(R.INICIO_MIN/60),mascota:null,collar:false,
+    hu:{},cola:[],contactos:[],hab:{coraza:false,salto:false,camuflaje:false},energia:0,perdidas:0,vetMin:Infinity,sig:1};
+  PERSONAS.forEach(p=>e.hu[p]=huespedVacio());
+  e.hu[id].adultas=1;
+  const t=R.INICIO_MIN+R.FP_PRIMER_BANO_H*60;
+  e.hu[id].proxBano=t;agendar(e,{t,tipo:'bano',id});
+  return e;
+}
+/* 'victoria', 'derrota' o null. banos: baños sobrevividos. hu.adultas debe incluir la reserva. */
+function metaCabeza(e,id,banos){
+  const R=REGLAS,hu=e.hu[id];
+  if(!hu.adultas&&!hu.huevos)return 'derrota';
+  if(banos>=R.FP_BANOS&&hu.adultas>=R.FP_ADULTAS)return 'victoria';
+  return null;
+}
+/* Gira la entrada (x derecha, y abajo; "adelante" es y=-1) por la mirada. yaw 0 mira hacia -y; positivo gira a la derecha. */
+function rotarEntrada(mv,yaw){const c=Math.cos(yaw),s=Math.sin(yaw);return{x:mv.x*c-mv.y*s,y:mv.x*s+mv.y*c}}
+const huespedes=e=>e.mascota?[...PERSONAS,e.mascota]:[...PERSONAS];
 function agendar(e,ev){ev.n=e.sig++;let i=e.cola.length;while(i>0&&(e.cola[i-1].t>ev.t))i--;e.cola.splice(i,0,ev)}
 function agendarVet(e){agendar(e,{t:e.vetMin-REGLAS.AVISO_VET_H*60,tipo:'aviso-vet'});agendar(e,{t:e.vetMin,tipo:'vet'})}
 function planificarDia(e,d,rng){
@@ -258,6 +279,7 @@ function avanzar(e,dMin,rng,activo){
   return out;
 }
 function revisarHabilidades(e){
+  if(e.soloCabeza)return [];
   const n=e.hu.joven.adultas,nuevas=[];
   REGLAS.METAS_JOVEN.forEach((m,i)=>{const h=HABILIDADES[i];if(n>=m&&!e.hab[h]&&HABILIDADES.slice(0,i).every(x=>e.hab[x])){e.hab[h]=true;nuevas.push(h)}});
   return nuevas;
@@ -286,7 +308,7 @@ function avisos(e){
 function horas(m){return m<60?Math.max(1,Math.ceil(m))+' min':Math.round(m/60)+' h'}
 
 const api={MAX_PANTALLA,aCabeza,aConteo,agendar,REGLAS,PERSONAS,MASCOTAS,HABILIDADES,INFO,GRUPO_TXT,LUGAR_TXT,CUARTO_TXT,CONTACTOS,PRIMER_BANO,
-  azar,binom,dia,hora,diaEscuela,textoHora,textoDia,minutosPorSeg,grupo,esPersona,donde,nueva,huespedes,planificarDia,
+  azar,binom,dia,hora,diaEscuela,textoHora,textoDia,minutosPorSeg,grupo,esPersona,donde,nueva,nuevaCabeza,metaCabeza,rotarEntrada,huespedes,planificarDia,
   bloqueado,pasoHora,sobrevivenBano,escondidas,banoEstadistico,peinadoEstadistico,contagio,avanzar,revisarHabilidades,usarHabilidad,
   infestado,resultado,avisos,horas};
 return api;

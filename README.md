@@ -9,6 +9,7 @@ Juego para celular: eres una pulga que pica, pone huevos, esquiva uñas, peines 
 En la pantalla de inicio eliges el modo:
 
 - **Casa** (principal): una familia de cinco personas y su mascota vive día tras día. Tu colonia empieza con una pulga en el niño. Ganas cuando las cinco personas tienen al menos 3 pulgas adultas al mismo tiempo.
+- **Primera persona**: una sola cabeza en 3D, vista desde los ojos de la pulga. Eliges a un integrante de la familia y ganas si sobrevives 2 baños y juntas 10 pulgas adultas. La partida no se guarda.
 - **Clásico**: los seis niveles del mapa de la ciudad, con mejoras y gotas.
 
 ### Controles
@@ -19,6 +20,14 @@ En la pantalla de inicio eliges el modo:
 - En el modo Casa: pasa sobre la comida para recogerla, toca **Casa** para ver a la familia y **Habilidad** para usar las habilidades del joven.
 
 En computadora: flechas para moverte, `E` para poner un huevo, espacio para saltar, `P` para pausar y `1`, `2`, `3` para las habilidades.
+
+### Modo Primera persona en breve
+
+- En celular: arrastra en la mitad izquierda para caminar y en la mitad derecha para girar la mirada. En computadora: `W`, `A`, `S`, `D` o las flechas para caminar y arrastra el mouse para mirar.
+- Si te quedas quieta, picas (aunque gires la mirada). **Huevo** (`E`) y **Pausa** (`P`) funcionan igual que en los otros modos.
+- Las reglas son las del modo Casa para esa cabeza: el primer baño llega al minuto y después cada 23 horas del juego, con peinado, secado y 30 minutos sin reproducción.
+- El minimapa muestra la cabeza desde arriba. Las flechas rojas del borde avisan de un peligro fuera de la vista y las verdes señalan un refugio.
+- La parte 3D (Three.js) se descarga solo al entrar a este modo, así que la primera vez necesita conexión. Sin conexión, Casa y Clásico funcionan igual.
 
 ### Modo Casa en breve
 
@@ -37,6 +46,7 @@ pulga-2/
 ├── js/casa-sim.js    Reglas del modo Casa (sin pantalla; se prueban con Node)
 ├── js/juego.js       Motor de cabeza y modo Clásico
 ├── js/casa.js        Vista de la casa y conexión del modo Casa con el motor
+├── js/primera-persona.js  Modo Primera persona: escena 3D, cámara, controles y minimapa
 ├── pruebas/          Pruebas de las reglas del modo Casa
 ├── docs/             Propuestas y diseño
 └── .vscode/          Configuración recomendada de VS Code

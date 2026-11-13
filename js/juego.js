@@ -215,7 +215,7 @@ function adults(){return G.fleas.filter(f=>f.alive).length}
 
 /* ---------- Entrada ---------- */
 let joy=null;const keys=new Set();
-function getMove(){
+function entrada(){
   let x=0,y=0;
   if(keys.has('arrowleft')||keys.has('a'))x--; if(keys.has('arrowright')||keys.has('d'))x++;
   if(keys.has('arrowup')||keys.has('w'))y--; if(keys.has('arrowdown')||keys.has('s'))y++;
@@ -223,6 +223,8 @@ function getMove(){
   if(joy){let dx=(joy.x-joy.sx)/30,dy=(joy.y-joy.sy)/30,m=hyp(dx,dy);if(m<.14)return{x:0,y:0};if(m>1){dx/=m;dy/=m}return{x:dx,y:dy}}
   return{x:0,y:0};
 }
+/* En primera persona la entrada es relativa a la mirada: "arriba" es hacia donde ve la cámara. */
+function getMove(){const mv=entrada();return G&&G.fp&&(mv.x||mv.y)?Casa.rotarEntrada(mv,G.fp.yaw):mv}
 cv.addEventListener('pointerdown',e=>{audioOn();if(mode!=='play'||joy)return;joy={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:e.clientX,y:e.clientY};try{cv.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
 cv.addEventListener('pointermove',e=>{if(joy&&e.pointerId===joy.id){joy.x=e.clientX;joy.y=e.clientY;
   const dx=joy.x-joy.sx,dy=joy.y-joy.sy,m=hyp(dx,dy);if(m>50){joy.sx+=dx/m*(m-50);joy.sy+=dy/m*(m-50)}}});
@@ -297,7 +299,7 @@ function kill(f,why){
     if(!best&&G.casa)best=casaDeReserva();
     G.player=best;
     if(best){best.ai=false;G.blood=Math.max(G.blood,40);G.starve=0;toast((why?why+'. ':'')+'Ahora controlas a otra pulga',true,2.2)}
-    else if(G.casa){toast((why?why+'. ':'')+'No quedan adultas en esta cabeza',true,2);G.overT=1.4}
+    else if(G.casa&&!G.fp){toast((why?why+'. ':'')+'No quedan adultas en esta cabeza',true,2);G.overT=1.4}
     else if(G.eggs.length){toast('Sin adultas: los huevos están por nacer',true,2.2)}
     else{toast(why||'Eliminaron tu colonia',true,2);G.overT=1.2}
   }
@@ -439,7 +441,7 @@ function update(dt){
 
   if(G.attract){G.fleas.forEach(f=>updateNpc(f,dt));G.fleas=G.fleas.filter(f=>f.alive);return}
 
-  if(G.overT>0){G.overT-=dt;if(G.overT<=0)G.casa?casaCabezaPerdida():gameOver();return}
+  if(G.overT>0){G.overT-=dt;if(G.overT<=0)G.fp?fpDerrota():G.casa?casaCabezaPerdida():gameOver();return}
   if(G.jump){
     const j=G.jump;j.t+=dt/.85;const p=G.player;
     p.x=lerp(j.x0,j.x1,j.t);p.y=lerp(j.y0,j.y1,j.t);p.a=Math.atan2(j.y1-j.y0,j.x1-j.x0);p.step+=dt*30;
@@ -565,7 +567,7 @@ function hud(){
   setTxt($('itchLabel'),'itch','Comezón: '+(G.itch<40?'tranquilo':G.itch<75?'se rasca':'va a la farmacia'));
   if(L.boss)$('barPat').style.transform=`scaleX(${G.patience/L.patience})`;
   const a=adults(),e=G.eggs.length;
-  setTxt($('colTxt'),'col',G.casa?casaColonia():(L.boss?'Colonia: '+a:'Colonia: '+a+' de '+L.goal)+(e?' · '+e+(e>1?' huevos':' huevo'):''));
+  setTxt($('colTxt'),'col',G.fp?fpColonia():G.casa?casaColonia():(L.boss?'Colonia: '+a:'Colonia: '+a+' de '+L.goal)+(e?' · '+e+(e>1?' huevos':' huevo'):''));
   const p=G.player;
   setTxt($('hidChip'),'hid',p&&p.hidden?'Oculta':'');
   $('btnEgg').setAttribute('aria-disabled',G.blood<(G.casa?casaCostoHuevo():EGG_COST)||!p||G.casa&&casaBloqueada()?'true':'false');
@@ -749,9 +751,11 @@ function render(){
 let lastT=0;
 function frame(ts){
   const dt=Math.min(.05,(ts-lastT)/1000||0);lastT=ts;
-  if(mode==='play'||mode==='casa')casaTick(dt);
+  if(mode==='play'&&G&&G.fp)fpTick(dt);
+  else if(mode==='play'||mode==='casa')casaTick(dt);
   if(G&&(mode==='play'||mode==='title')){update(dt)}
-  if(G&&mode!=='map')render();
+  if(G&&G.fp)fpRender(dt);
+  else if(G&&mode!=='map')render();
   requestAnimationFrame(frame);
 }
 
@@ -767,6 +771,7 @@ function sheet(html){$('sheetBody').innerHTML=html;$('sheet').hidden=false}
 function closeSheet(){$('sheet').hidden=true}
 function pause(){
   if(mode!=='play'||G.jump||G.overT>0)return;
+  if(G.fp){fpPausa();return}
   if(G.casa){casaPausa();return}
   mode='paused';
   sheet(`<div class="eyebrow">${G.L.place}</div><h2>Pausa</h2><p>Arrastra para moverte y suelta para picar. Con teclado: flechas, E para huevo, espacio para saltar.</p>
@@ -886,5 +891,5 @@ $('btnReset').onclick=()=>{
 $('btnBackTitle').onclick=()=>{startAttract();refreshTitle()};
 $('btnMute').onclick=()=>{save.mute=!save.mute;writeSave();$('btnMute').textContent='Sonido: '+(save.mute?'no':'sí');if(!save.mute)audioOn()};
 
-/* casa.js se carga después: el arranque espera a que estén todos los scripts */
+/* casa.js y primera-persona.js se cargan después: el arranque espera a que estén todos los scripts */
 addEventListener('DOMContentLoaded',()=>{refreshTitle();startAttract();requestAnimationFrame(frame)});

@@ -21,9 +21,9 @@ const HUESPEDES={
  huron:{dog:true,inquieto:true,bloodMul:1.3,skin:'#e8d2bd',hair:'#8a7560',strands:2600,len:[6,10],tufts:10,tuftR:[11,15],shirt:'#7a5a3e',threats:{nails:5},first:7,every:8,zone:.65,bg:['#4a3a2a','#403224']},
  conejo:{dog:true,bloodMul:1.1,skin:'#f2d6cf',hair:'#e8e1d8',strands:2400,len:[7,11],tufts:3,tuftR:[10,13],shirt:'#6d8f5a',threats:{nails:4},first:10,every:13,zone:.75,bg:['#3d5a3a','#354f33']}
 };
-function casaPerfil(id){
-  const hu=CS.hu[id];
-  return Object.assign({},PERFIL_BASE,HUESPEDES[id],{id,who:nombre(id),gels:hu.gel?(id==='joven'?5:3):0,collar:id==='perro'&&CS.collar});
+function casaPerfil(id,e=CS){
+  const hu=e.hu[id];
+  return Object.assign({},PERFIL_BASE,HUESPEDES[id],{id,who:nombre(id),gels:hu.gel?(id==='joven'?5:3):0,collar:id==='perro'&&e.collar});
 }
 
 /* ---------- Alimentos ---------- */
@@ -48,18 +48,18 @@ function casaNuevaComida(tipos){
   return{tipo,x,y,t:0};
 }
 function casaComer(tipo){
-  const C=G.casa,hu=CS.hu[C.id];
+  const C=G.casa,e=C.e,hu=e.hu[C.id];
   if(EF_DUR[tipo])C.ef[tipo]=G.t+EF_DUR[tipo];
   if(tipo==='piel')hu.pielSeca=true;
-  if(tipo==='sudor')CS.energia=Math.min(100,CS.energia+RG.ENERGIA_SUDOR);
+  if(tipo==='sudor'){if(C.sinHabilidades)G.blood=Math.min(100,G.blood+RG.ENERGIA_SUDOR);else e.energia=Math.min(100,e.energia+RG.ENERGIA_SUDOR)}
   if(tipo==='grasa')G.blood=Math.min(100,G.blood+45);
   if(tipo==='comida')G.blood=Math.min(100,G.blood+30);
-  toast(COMIDA_TXT[tipo],false,2.2);SFX.hatch();
+  toast(tipo==='sudor'&&C.sinHabilidades?'Sudor: un buen trago de sangre':tipo==='piel'&&C.sinHabilidades?'Piel seca: un bocado sin efecto en esta partida':COMIDA_TXT[tipo],false,2.2);SFX.hatch();
 }
 const efecto=k=>G&&G.casa&&G.casa.ef[k]>G.t;
 
 /* ---------- Ganchos que usa juego.js ---------- */
-function casaBloqueada(){return Casa.bloqueado(CS,G.casa.id)}
+function casaBloqueada(){return Casa.bloqueado(G.casa.e,G.casa.id)}
 function casaCostoHuevo(){return efecto('frituras')?22:EGG_COST}
 function casaLlena(){return adults()+G.casa.reserva+G.eggs.length>=RG.TOPE}
 function casaVelocidad(){return efecto('dulces')?1.5:1}
@@ -81,7 +81,7 @@ function casaCabezaUpdate(dt){
   const tipos=COMIDA[C.grupo];
   if(tipos&&!G.threats.some(t=>t.k==='bano')){
     C.comidaT-=dt;
-    if(C.comidaT<=0){if(C.comida.length<4)C.comida.push(casaNuevaComida(tipos));C.comidaT=COMIDA_CADA[C.grupo]*(CS.hu[C.id].gel?1.8:1)*rand(.8,1.2)}
+    if(C.comidaT<=0){if(C.comida.length<4)C.comida.push(casaNuevaComida(tipos));C.comidaT=COMIDA_CADA[C.grupo]*(C.e.hu[C.id].gel?1.8:1)*rand(.8,1.2)}
   }
   const p=G.player;
   if(p&&p.alive)C.comida=C.comida.filter(k=>{if(hyp(k.x-p.x,k.y-p.y)<7){casaComer(k.tipo);return false}return true});
@@ -104,26 +104,31 @@ function casaColonia(){
   return 'Colonia: '+a+(e?' · '+e+(e>1?' huevos':' huevo'):'')+(Casa.esPersona(id)?(falta>0?' · faltan '+falta:' · infestado'):' · ancla');
 }
 function casaHud(){
-  const C=G.casa,hu=CS.hu[C.id],lugar=Casa.donde(CS,C.id,CS.min);
-  setTxt($('hudPlace'),'cplace',Casa.textoDia(CS.min)+' · '+Casa.textoHora(CS.min)+' · '+Casa.LUGAR_TXT[lugar.lugar]);
-  const any=Casa.HABILIDADES.some(h=>CS.hab[h]);
-  if($('enWrap').hidden===any){$('enWrap').hidden=!any;layout()}
-  if(any){$('barEn').style.transform=`scaleX(${CS.energia/100})`;setTxt($('enLabel'),'en','Energía: '+Math.round(CS.energia))}
-  $('btnHab').hidden=!any||!!G.jump;
+  const C=G.casa,e=C.e,hu=e.hu[C.id];
+  /* solo Casa: lugar, energía y habilidades. El modo Primera persona escribe su propia línea de lugar. */
+  if(!G.fp){
+    const lugar=Casa.donde(e,C.id,e.min);
+    setTxt($('hudPlace'),'cplace',Casa.textoDia(e.min)+' · '+Casa.textoHora(e.min)+' · '+Casa.LUGAR_TXT[lugar.lugar]);
+    const any=Casa.HABILIDADES.some(h=>e.hab[h]);
+    if($('enWrap').hidden===any){$('enWrap').hidden=!any;layout()}
+    if(any){$('barEn').style.transform=`scaleX(${e.energia/100})`;setTxt($('enLabel'),'en','Energía: '+Math.round(e.energia))}
+    $('btnHab').hidden=!any||!!G.jump;
+  }
+  /* común: efectos, bloqueo y aviso de baño */
   const ef=[];
   if(efecto('frituras'))ef.push('Frituras '+Math.ceil(C.ef.frituras-G.t)+' s');
   if(efecto('dulces'))ef.push('Dulces '+Math.ceil(C.ef.dulces-G.t)+' s');
   if(efecto('grasa'))ef.push('Grasa '+Math.ceil(C.ef.grasa-G.t)+' s');
-  if(hu.pielSeca)ef.push('Piel seca');
+  if(hu.pielSeca&&!C.sinHabilidades)ef.push('Piel seca');
   if(G.player&&G.player.shield)ef.push('Coraza');
   if(C.saltoHasta>G.t)ef.push('Salto doble '+Math.ceil(C.saltoHasta-G.t)+' s');
   if(C.camHasta>G.t)ef.push('Camuflaje '+Math.ceil(C.camHasta-G.t)+' s');
   if(hu.gel)ef.push(C.id==='joven'?'Gel':'Cera');
-  if(casaBloqueada())ef.push('Sin reproducción '+Math.ceil(hu.bloqueoHasta-CS.min)+' min');
+  if(casaBloqueada())ef.push('Sin reproducción '+Math.ceil(hu.bloqueoHasta-e.min)+' min');
   setTxt($('efChip'),'ef',ef.join(' · '));
   if(Casa.esPersona(C.id)){
-    const m=hu.proxBano-CS.min;
-    if(m<=RG.AVISO_BANO_MIN&&m>0&&C.avisoBano!==hu.proxBano){C.avisoBano=hu.proxBano;toast(nombre(C.id)+' se baña en '+Casa.horas(m)+': reparte la colonia',true,2.6)}
+    const m=hu.proxBano-e.min;
+    if(m<=RG.AVISO_BANO_MIN&&m>0&&C.avisoBano!==hu.proxBano){C.avisoBano=hu.proxBano;toast(nombre(C.id)+' se baña en '+Casa.horas(m)+(G.fp?': busca un mechón o las orejas':': reparte la colonia'),true,2.6)}
   }
 }
 
@@ -133,7 +138,7 @@ function casaEntrar(id){
   if(hu.adultas<1)return false;
   const L=casaPerfil(id);
   mode='play';
-  G=newGame(L,false,{id,grupo:Casa.grupo(id),reserva:0,comida:[],comidaT:3,ef:{},saltoHasta:0,camHasta:0,lensHasta:0,avisoBano:0});
+  G=newGame(L,false,{e:CS,id,grupo:Casa.grupo(id),reserva:0,comida:[],comidaT:3,ef:{},saltoHasta:0,camHasta:0,lensHasta:0,avisoBano:0});
   G.tut=-1;
   const c=Casa.aCabeza(hu);G.casa.reserva=c.reserva;
   for(let i=0;i<c.pantalla;i++){
@@ -192,7 +197,7 @@ function casaPeinadoCabeza(gel){
   G.eggs=G.eggs.filter(e=>{const hid=G.w.tufts.some(t=>hyp(t.x-e.x,t.y-e.y)<t.r);if(!hid&&Math.random()<RG.PEINADO_HUEVOS){splat(e.x,e.y,'#f8e8d8',5);quitados++;return false}return true});
   if(!quitados&&G.eggs.length){const e=G.eggs.shift();splat(e.x,e.y,'#f8e8d8',5)}
   G.fleas.forEach(f=>{if(f.alive&&f.born!=null&&G.t-f.born<20&&!f.hidden&&Math.random()<RG.PEINADO_CRIAS)kill(f,'El peine se llevó a una cría')});
-  if(gel){G.L=casaPerfil(C.id);G.w.gels=genWorld(G.L).gels;buildLayers()}
+  if(gel){G.L=casaPerfil(C.id,C.e);G.w.gels=genWorld(G.L).gels;buildLayers()}
   toast('Peinado y secado: 30 minutos sin reproducción'+(gel?(C.id==='joven'?'. Le pusieron gel':'. Le pusieron cera'):''),true,2.6);
 }
 function casaPeineMama(){
