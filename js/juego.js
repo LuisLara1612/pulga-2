@@ -106,7 +106,7 @@ function hairDensity(L,x,y){
 function mk(){const c=document.createElement('canvas');c.width=cv.width;c.height=cv.height;return c}
 function drawScene(c,L){
   const Wp=cv.width,Hp=cv.height,u=Math.max(Wp,Hp)/20;
-  const pal={nino:['#2e4b3b','#284335'],teen:['#2a3b57','#24334c'],calvo:['#3b4150','#343a48'],abuela:['#201532','#2a1c40'],perro:['#335c2b','#2c5126'],mama:['#5a382c','#4d2f25']}[L.id]||['#333','#2c2c2c'];
+  const pal=L.bg||{nino:['#2e4b3b','#284335'],teen:['#2a3b57','#24334c'],calvo:['#3b4150','#343a48'],abuela:['#201532','#2a1c40'],perro:['#335c2b','#2c5126'],mama:['#5a382c','#4d2f25']}[L.id]||['#333','#2c2c2c'];
   c.fillStyle=pal[0];c.fillRect(0,0,Wp,Hp);c.fillStyle=pal[1];
   if(L.id==='nino'||L.id==='mama'){for(let y=0;y<Hp/u+1;y++)for(let x=0;x<Wp/u+1;x++)if((x+y)%2)c.fillRect(x*u,y*u,u,u)}
   else if(L.id==='teen'){for(let x=0;x<Wp;x+=u*1.1)c.fillRect(x,0,u*.45,Hp)}
@@ -187,8 +187,8 @@ function placeToast(top){$('toast').style.top=(top+2)+'px'}
 new ResizeObserver(layout).observe($('app'));
 
 /* ---------- Partida ---------- */
-function newGame(L,attract){
-  const g={L,w:genWorld(L),attract:!!attract,t:0,blood:60,itch:0,fleas:[],eggs:[],marks:[],threats:[],parts:[],scratches:[],
+function newGame(L,attract,casa){
+  const g={casa:casa||null,drift:null,L,w:genWorld(L),attract:!!attract,t:0,blood:60,itch:0,fleas:[],eggs:[],marks:[],threats:[],parts:[],scratches:[],
     player:null,spawnT:L.first,queue:[],contact:null,contactWait:0,goalDone:false,gotas:0,lost:0,shake:0,patience:L.patience||0,starve:0,
     stillT:0,biting:false,wind:{x:0,y:0},jump:null,overT:0,tut:L.id==='nino'&&!save.done.nino?0:-1,moved:0,lens:L.lens?{x:0,y:-60,prog:0}:null,sipT:0,everHid:false};
   return g;
@@ -205,7 +205,7 @@ function startLevel(L){
   showOnly(null);
   $('hud').hidden=false;$('btnEgg').hidden=false;$('btnJump').hidden=true;$('hint').hidden=true;
   $('hudWho').textContent=L.who;$('hudPlace').textContent=L.place;
-  $('patWrap').hidden=!L.boss;
+  $('patWrap').hidden=!L.boss;$('btnCasa').hidden=true;$('enWrap').hidden=true;$('efChip').hidden=true;
   layout();
   keys.clear();joy=null;
   toast(L.boss?'Aguanta hasta que mamá se rinda':'Haz crecer tu colonia a '+L.goal+' pulgas',false,2.6);
@@ -244,14 +244,17 @@ press($('btnEgg'),()=>tryEgg());press($('btnJump'),()=>tryJump());press($('btnPa
 
 function tryEgg(){
   if(mode!=='play'||!G.player||G.jump)return;
-  if(G.blood<EGG_COST){toast('Te falta sangre: quédate quieta para picar',false,1.5);return}
-  if(G.eggs.length+adults()>=14){toast('La colonia ya no cabe aquí',false,1.3);return}
-  const p=G.player;G.blood-=EGG_COST;G.eggs.push({x:p.x,y:p.y,t:0,seed:rand(0,TAU)});SFX.egg();
+  if(G.casa&&casaBloqueada()){toast('Reproducción bloqueada después del peinado',true,1.6);return}
+  const cost=G.casa?casaCostoHuevo():EGG_COST;
+  if(G.blood<cost){toast('Te falta sangre: quédate quieta para picar',false,1.5);return}
+  if(G.eggs.length+adults()>=14||G.casa&&casaLlena()){toast('La colonia ya no cabe aquí',false,1.3);return}
+  const p=G.player;G.blood-=cost;G.eggs.push({x:p.x,y:p.y,t:0,seed:rand(0,TAU)});SFX.egg();
   if(G.tut===2)G.tut=3;
 }
 function inZone(p){
   const c=G.contact;if(!c||!c.open||!p)return false;
-  return hyp(p.x,p.y)>70&&Math.abs(angDiff(Math.atan2(p.y,p.x),c.a))<c.w;
+  const far=G.casa&&G.casa.saltoHasta>G.t;
+  return hyp(p.x,p.y)>(far?40:70)&&Math.abs(angDiff(Math.atan2(p.y,p.x),c.a))<c.w*(far?1.9:1);
 }
 function tryJump(){
   if(mode!=='play'||G.jump||!G.contact||!inZone(G.player))return;
@@ -267,9 +270,10 @@ function toast(msg,danger,dur=1.8){const t=$('toast');t.textContent=msg;t.classL
 /* ---------- Pulgas ---------- */
 function moveFlea(f,vx,vy,dt){
   const w=G.w;
-  f.hidden=w.tufts.some(t=>hyp(t.x-f.x,t.y-f.y)<t.r);
+  f.hidden=w.tufts.some(t=>hyp(t.x-f.x,t.y-f.y)<t.r)||!!G.casa&&casaEscondida(f);
   const wf=f.hidden?.2:1;
   f.x+=vx*dt+G.wind.x*wf*dt;f.y+=vy*dt+G.wind.y*wf*dt;
+  if(G.drift){f.x+=G.drift.x*wf*dt;f.y+=G.drift.y*wf*dt}
   const onWind=hyp(G.wind.x,G.wind.y)>0;
   w.curls.forEach(k=>{const dx=f.x-k.x,dy=f.y-k.y,d=hyp(dx,dy),m=k.r+3;if(d<m&&d>0){f.x=k.x+dx/d*m;f.y=k.y+dy/d*m}});
   const d=hyp(f.x,f.y);
@@ -290,8 +294,10 @@ function kill(f,why){
   if(G.attract)return;
   if(f===G.player){
     let best=null,bd=1e9;G.fleas.forEach(o=>{if(o.alive&&o!==f){const d=hyp(o.x-f.x,o.y-f.y);if(d<bd){bd=d;best=o}}});
+    if(!best&&G.casa)best=casaDeReserva();
     G.player=best;
     if(best){best.ai=false;G.blood=Math.max(G.blood,40);G.starve=0;toast((why?why+'. ':'')+'Ahora controlas a otra pulga',true,2.2)}
+    else if(G.casa){toast((why?why+'. ':'')+'No quedan adultas en esta cabeza',true,2);G.overT=1.4}
     else if(G.eggs.length){toast('Sin adultas: los huevos están por nacer',true,2.2)}
     else{toast(why||'Eliminaron tu colonia',true,2);G.overT=1.2}
   }
@@ -318,7 +324,8 @@ function updateNpc(f,dt){
     if(f.biting&&!G.attract){G.itch+=.5*(save.ups.anes?.55:1)*dt;G.blood=Math.min(100,G.blood+.5*dt)}
     if(f.wait<=0){
       const tf=G.w.tufts;let x,y;
-      if(tf.length&&Math.random()<.6){const t=tf[Math.random()*tf.length|0];x=t.x+rand(-.5,.5)*t.r;y=t.y+rand(-.5,.5)*t.r}
+      if(G.casa&&G.w.gels.length&&Math.random()<.8){const z=G.w.gels[0];x=z.x+rand(-.4,.4)*z.r;y=z.y+rand(-.4,.4)*z.r}
+      else if(tf.length&&Math.random()<.6){const t=tf[Math.random()*tf.length|0];x=t.x+rand(-.5,.5)*t.r;y=t.y+rand(-.5,.5)*t.r}
       else{const a=rand(0,TAU),r=rand(5,90);x=Math.cos(a)*r;y=Math.sin(a)*r}
       f.tx=x;f.ty=y;f.wait=rand(2,5);
     }
@@ -330,7 +337,8 @@ function updateNpc(f,dt){
 }
 function slowAt(f){
   let m=1;
-  if(G.w.gels.some(z=>hyp(z.x-f.x,z.y-f.y)<z.r))m*=.45;
+  if(G.w.gels.some(z=>hyp(z.x-f.x,z.y-f.y)<z.r)&&!(G.casa&&f===G.player&&G.casa.camHasta>G.t))m*=.45;
+  if(G.threats.some(t=>t.k==='bano'))m*=.5;
   if(G.w.clouds.some(z=>hyp(z.x-f.x,z.y-f.y)<z.r))m*=.4;
   return m;
 }
@@ -372,8 +380,8 @@ function updateThreats(dt){
         th.stage=1;G.shake=REDUCED?0:7;SFX.hit();
         G.itch=Math.max(0,G.itch-9);
         all.forEach(f=>{if(f.alive&&!f.hidden&&hitByStrip(f,th)){
-          if(f.shield){f.shield=false;splat(f.x,f.y,'#ffc933',8);toast('El caparazón aguantó el golpe',false,1.4)}
-          else kill(f,G.L.paw?'La aplastó la pata':'La aplastaron las uñas');
+          if(f.shield){f.shield=false;splat(f.x,f.y,'#ffc933',8);toast(G.casa?'La coraza aguantó el golpe':'El caparazón aguantó el golpe',false,1.4)}
+          else kill(f,G.L.lengua?'La lamió el gato':G.L.paw?'La aplastó la pata':'La aplastaron las uñas');
         }});
         G.eggs=G.eggs.filter(e=>{const hid=G.w.tufts.some(t=>hyp(t.x-e.x,t.y-e.y)<t.r);if(!hid&&hitByStrip(e,th)){splat(e.x,e.y,'#f8e8d8',5);return false}return true});
         G.scratches.push({x:th.x,y:th.y,a:th.a,len:th.len,w:th.w,t:0});
@@ -396,6 +404,11 @@ function updateThreats(dt){
         if(!save.ups.huevos)G.eggs=G.eggs.filter(e=>{if(hyp(e.x,e.y)>th.r&&!onSpot(e)){splat(e.x,e.y,'#c6f1ef',4);return false}return true});
       }
       if(th.t>th.fill+th.hold+th.drain){G.marks=[];G.itch=Math.max(0,G.itch-22);return false}
+      return true;
+    }
+    if(th.k==='bano'){
+      th.r=shampooR(th);
+      if(th.t>th.fill+th.hold+th.drain){G.marks=[];G.itch=Math.max(0,G.itch-30);return false}
       return true;
     }
     if(th.k==='dryer'){
@@ -426,11 +439,11 @@ function update(dt){
 
   if(G.attract){G.fleas.forEach(f=>updateNpc(f,dt));G.fleas=G.fleas.filter(f=>f.alive);return}
 
-  if(G.overT>0){G.overT-=dt;if(G.overT<=0)gameOver();return}
+  if(G.overT>0){G.overT-=dt;if(G.overT<=0)G.casa?casaCabezaPerdida():gameOver();return}
   if(G.jump){
     const j=G.jump;j.t+=dt/.85;const p=G.player;
     p.x=lerp(j.x0,j.x1,j.t);p.y=lerp(j.y0,j.y1,j.t);p.a=Math.atan2(j.y1-j.y0,j.x1-j.x0);p.step+=dt*30;
-    if(j.t>=1)finishLevel();
+    if(j.t>=1)G.casa?casaSaltoFin():finishLevel();
     return;
   }
 
@@ -441,8 +454,10 @@ function update(dt){
   /* jugadora */
   const p=G.player;let wasBiting=false;
   if(p&&p.alive){
-    const mv=getMove(),m=hyp(mv.x,mv.y),slow=slowAt(p),sp=SPEED*slow;
-    moveFlea(p,mv.x*sp,mv.y*sp,dt);
+    const mv=getMove(),m=hyp(mv.x,mv.y),slow=slowAt(p),sp=SPEED*slow*(G.casa?casaVelocidad():1);
+    let vx=mv.x*sp,vy=mv.y*sp;
+    if(G.casa&&casaResbala()){const k=1-Math.exp(-dt*1.6);p.vx=lerp(p.vx||0,vx,k);p.vy=lerp(p.vy||0,vy,k);vx=p.vx;vy=p.vy}else{p.vx=vx;p.vy=vy}
+    moveFlea(p,vx,vy,dt);
     if(!p.alive){/* cayó */}
     else{
       if(m>.1){G.stillT=0;G.moved+=m*dt}else G.stillT+=dt;
@@ -472,15 +487,18 @@ function update(dt){
   if(G.lens&&G.t>5&&G.player){
     const l=G.lens,pp=G.player,dx=pp.x-l.x,dy=pp.y-l.y,d=hyp(dx,dy),sp=26;
     if(d>1){l.x+=dx/d*sp*dt;l.y+=dy/d*sp*dt}
-    if(d<20){l.prog+=dt/(pp.hidden?4:1.5);if(l.prog>=1){kill(pp,'Las pinzas de mamá la atraparon');l.prog=0;const a=rand(0,TAU);l.x=Math.cos(a)*85;l.y=Math.sin(a)*85}}
+    const cam=G.casa&&pp.hidden&&G.casa.camHasta>G.t;
+    if(d<20&&!cam){l.prog+=dt/(pp.hidden?4:1.5);if(l.prog>=1){if(pp.shield){pp.shield=false;splat(pp.x,pp.y,'#ffc933',8);toast('La coraza aguantó las pinzas',false,1.4)}else kill(pp,G.casa?'Las pinzas la atraparon':'Las pinzas de mamá la atraparon');l.prog=0;const a=rand(0,TAU);l.x=Math.cos(a)*85;l.y=Math.sin(a)*85}}
     else l.prog=Math.max(0,l.prog-dt*.6);
   }
   /* huevos */
   const anyAdult=adults()>0;
+  const hatchMul=G.casa?casaEclosion():1;
   G.eggs=G.eggs.filter(e=>{
-    e.t+=dt*(anyAdult?1:3);
+    e.t+=dt*(anyAdult?1:3)*hatchMul;
     if(e.t>=HATCH){
-      const f=makeFlea(e.x,e.y,true);f.tx=e.x;f.ty=e.y;G.fleas.push(f);SFX.hatch();splat(e.x,e.y,'#f8e8d8',6);
+      if(G.casa&&adults()>=14){G.casa.reserva++;splat(e.x,e.y,'#f8e8d8',6);return false}
+      const f=makeFlea(e.x,e.y,true);f.tx=e.x;f.ty=e.y;f.born=G.t;G.fleas.push(f);SFX.hatch();splat(e.x,e.y,'#f8e8d8',6);
       if(!G.player){G.player=f;f.ai=false;G.blood=Math.max(G.blood,45);toast('Nació tu nueva pulga',false,1.6)}
       return false;
     }
@@ -508,9 +526,10 @@ function update(dt){
   }
 
   /* meta y contacto */
-  if(L.boss){G.patience=Math.max(0,G.patience-dt);if(G.patience<=0)G.goalDone=true}
+  if(G.casa)casaCabezaUpdate(dt);
+  else if(L.boss){G.patience=Math.max(0,G.patience-dt);if(G.patience<=0)G.goalDone=true}
   else if(adults()>=L.goal)G.goalDone=true;
-  if(G.goalDone&&!G.contact){
+  if(G.goalDone&&!G.contact&&!G.casa){
     G.contactWait-=dt;
     if(G.contactWait<=0){
       const ch=[Math.PI,0,-.75,-2.4,.6,2.5];
@@ -520,7 +539,7 @@ function update(dt){
   }
   if(G.contact){
     const c=G.contact;c.t+=dt;c.slide=clamp(c.t/.6,0,1);
-    if(c.t>c.dur){G.contact=null;G.contactWait=8;$('btnJump').hidden=true;toast('Se alejó. Espera el siguiente contacto',true,2)}
+    if(c.t>c.dur){G.contact=null;G.contactWait=8;$('btnJump').hidden=true;toast(G.casa?'Se separaron. Espera otro contacto':'Se alejó. Espera el siguiente contacto',true,2)}
   }
 
   tutorial();
@@ -546,10 +565,11 @@ function hud(){
   setTxt($('itchLabel'),'itch','Comezón: '+(G.itch<40?'tranquilo':G.itch<75?'se rasca':'va a la farmacia'));
   if(L.boss)$('barPat').style.transform=`scaleX(${G.patience/L.patience})`;
   const a=adults(),e=G.eggs.length;
-  setTxt($('colTxt'),'col',(L.boss?'Colonia: '+a:'Colonia: '+a+' de '+L.goal)+(e?' · '+e+(e>1?' huevos':' huevo'):''));
+  setTxt($('colTxt'),'col',G.casa?casaColonia():(L.boss?'Colonia: '+a:'Colonia: '+a+' de '+L.goal)+(e?' · '+e+(e>1?' huevos':' huevo'):''));
   const p=G.player;
   setTxt($('hidChip'),'hid',p&&p.hidden?'Oculta':'');
-  $('btnEgg').setAttribute('aria-disabled',G.blood<EGG_COST||!p?'true':'false');
+  $('btnEgg').setAttribute('aria-disabled',G.blood<(G.casa?casaCostoHuevo():EGG_COST)||!p||G.casa&&casaBloqueada()?'true':'false');
+  if(G.casa)casaHud();
   if(G.contact){
     const ok=inZone(p);const j=$('btnJump');
     j.setAttribute('aria-disabled',ok?'false':'true');j.classList.toggle('ready',ok);
@@ -604,9 +624,9 @@ function drawShampoo(th){
   });
 }
 function drawNails(th){
-  const c=ctx,skin=G.L.paw?'#6b4420':'#e6ab85';
+  const c=ctx,skin=G.L.lengua?'#e8758f':G.L.paw?'#6b4420':'#e6ab85';
   c.save();c.translate(th.x,th.y);c.rotate(th.a);
-  const n=G.L.paw?3:4,gap=th.w/n;
+  const n=G.L.lengua?2:G.L.paw?3:4,gap=th.w/n;
   if(th.stage===0){
     const k=clamp(th.t/th.warn,0,1);
     c.save();c.beginPath();c.rect(-th.len/2,-th.w/2,th.len,th.w);c.fillStyle=`rgba(40,5,10,${.12+k*.28})`;c.fill();
@@ -698,7 +718,8 @@ function render(){
   G.scratches.forEach(s=>{c.save();c.translate(s.x,s.y);c.rotate(s.a);c.globalAlpha=(1-s.t/2)*.5;c.strokeStyle='#c8354a';c.lineWidth=.8;const n=G.L.paw?3:4;for(let i=0;i<n;i++){const y=-s.w/2+s.w/n*(i+.5);c.beginPath();c.moveTo(-s.len/2,y);c.lineTo(s.len/2,y);c.stroke()}c.restore()});
   c.globalAlpha=1;
   drawZone();
-  G.threats.forEach(t=>{if(t.k==='shampoo')drawShampoo(t)});
+  G.threats.forEach(t=>{if(t.k==='shampoo'||t.k==='bano')drawShampoo(t)});
+  if(G.casa)casaDibujo(c);
   G.eggs.forEach(drawEgg);
   G.fleas.forEach(f=>{if(f.alive&&f!==G.player)drawFlea(f,false)});
   if(G.player&&G.player.alive)drawFlea(G.player,true);
@@ -728,22 +749,25 @@ function render(){
 let lastT=0;
 function frame(ts){
   const dt=Math.min(.05,(ts-lastT)/1000||0);lastT=ts;
+  if(mode==='play'||mode==='casa')casaTick(dt);
   if(G&&(mode==='play'||mode==='title')){update(dt)}
   if(G&&mode!=='map')render();
   requestAnimationFrame(frame);
 }
 
 /* ---------- Pantallas ---------- */
-const SCREENS=['sTitle','sMap'];
+const SCREENS=['sTitle','sMap','sCasa'];
 function showOnly(id){
   SCREENS.forEach(s=>{$(s).hidden=s!==id});
   $('sheet').hidden=true;
+  $('btnHab').hidden=true;$('habMenu').hidden=true;
   if(id){$('hud').hidden=true;$('btnEgg').hidden=true;$('btnJump').hidden=true;$('hint').hidden=true;$('toast').classList.remove('show')}
 }
 function sheet(html){$('sheetBody').innerHTML=html;$('sheet').hidden=false}
 function closeSheet(){$('sheet').hidden=true}
 function pause(){
   if(mode!=='play'||G.jump||G.overT>0)return;
+  if(G.casa){casaPausa();return}
   mode='paused';
   sheet(`<div class="eyebrow">${G.L.place}</div><h2>Pausa</h2><p>Arrastra para moverte y suelta para picar. Con teclado: flechas, E para huevo, espacio para saltar.</p>
   <div class="actions"><button class="btn" id="bRes">Seguir</button><button class="btn alt" id="bRetry">Reintentar esta cabeza</button><button class="btn alt" id="bMap">Volver al mapa</button></div>`);
@@ -850,12 +874,11 @@ function levelSheet(L){
 let resetArmed=false;
 function refreshTitle(){
   const p=hasProgress();
-  $('btnStart').textContent=p?'Seguir la plaga':'Empezar la plaga';
-  $('btnReset').hidden=!p;$('btnReset').textContent='Borrar avance';resetArmed=false;
+  $('btnReset').hidden=!p;$('btnReset').textContent='Borrar avance clásico';resetArmed=false;
   const n=LEVELS.filter(l=>save.done[l.id]).length;
-  $('titleNote').textContent=p?`Llevas ${n} de ${LEVELS.length} infectados`:'';
+  $('titleNote').textContent=casaNotaTitulo()+(p?(casaNotaTitulo()?' · ':'')+`Clásico: ${n} de ${LEVELS.length} infectados`:'');
 }
-$('btnStart').onclick=()=>{audioOn();showMap()};
+$('btnClassic').onclick=()=>{audioOn();showMap()};
 $('btnReset').onclick=()=>{
   if(!resetArmed){resetArmed=true;$('btnReset').textContent='Toca otra vez para borrar todo';return}
   save={done:{},gotas:0,ups:{},dog:false,mute:save.mute};writeSave();refreshTitle();
@@ -863,6 +886,5 @@ $('btnReset').onclick=()=>{
 $('btnBackTitle').onclick=()=>{startAttract();refreshTitle()};
 $('btnMute').onclick=()=>{save.mute=!save.mute;writeSave();$('btnMute').textContent='Sonido: '+(save.mute?'no':'sí');if(!save.mute)audioOn()};
 
-refreshTitle();
-startAttract();
-requestAnimationFrame(frame);
+/* casa.js se carga después: el arranque espera a que estén todos los scripts */
+addEventListener('DOMContentLoaded',()=>{refreshTitle();startAttract();requestAnimationFrame(frame)});

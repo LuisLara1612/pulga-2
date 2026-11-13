@@ -16,19 +16,23 @@
   <div id="hud" hidden>
     <div class="hud-top">
       <div class="hud-who"><b id="hudWho"></b><span id="hudPlace"></span></div>
-      <button id="btnPause" aria-label="Pausa">II</button>
+      <div class="hud-btns"><button id="btnCasa" hidden>Casa</button><button id="btnPause" aria-label="Pausa">II</button></div>
     </div>
     <div class="meters">
       <div class="meter"><label>Sangre</label><div class="track"><i id="barBlood"></i></div></div>
       <div class="meter"><label id="itchLabel">Comezón</label><div class="track itch"><i id="barItch"></i><u style="left:40%"></u><u style="left:75%"></u></div></div>
     </div>
+    <div id="enWrap" hidden><div class="meter"><label id="enLabel">Energía</label><div class="track en"><i id="barEn"></i></div></div></div>
     <div id="patWrap" hidden><div class="meter"><label>Paciencia de mamá</label><div class="track pat"><i id="barPat"></i></div></div></div>
     <div id="colony"><span id="colTxt"></span><span id="hidChip"></span></div>
+    <div id="efChip" hidden></div>
   </div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="hint" hidden></div>
   <button id="btnEgg" class="act" hidden>Huevo<small>35 de sangre</small></button>
   <button id="btnJump" class="act" hidden>Saltar<small>Ve a la zona</small></button>
+  <button id="btnHab" class="act" hidden aria-expanded="false" aria-controls="habMenu">Habilidad<small>1 · 2 · 3</small></button>
+  <div id="habMenu" hidden></div>
 
   <section id="sTitle" class="screen">
     <div>
@@ -37,8 +41,9 @@
     </div>
     <div class="title-actions">
       <p class="note" id="titleNote"></p>
-      <button class="btn" id="btnStart">Empezar la plaga</button>
-      <button class="btn alt" id="btnReset" hidden>Borrar avance</button>
+      <button class="btn" id="btnStart">Casa</button>
+      <button class="btn alt" id="btnClassic">Clásico</button>
+      <div class="resets"><button class="btn alt" id="btnResetCasa" hidden>Borrar partida de Casa</button><button class="btn alt" id="btnReset" hidden>Borrar avance clásico</button></div>
     </div>
   </section>
 
@@ -60,9 +65,30 @@
     </div>
   </section>
 
+  <section id="sCasa" class="screen" hidden>
+    <div class="wrap">
+      <div class="bulletin">
+        <div><div class="eyebrow" id="casaReloj">Día 1</div><h2>La casa</h2></div>
+        <div class="tally">
+          <div><b id="cInf">0/5</b><span>Infestados</span></div>
+          <div><b id="cTot">1</b><span>Pulgas</span></div>
+        </div>
+      </div>
+      <ul id="casaAvisos" class="avisos" aria-live="polite"></ul>
+      <div id="casaPlano"></div>
+      <div id="casaFichas" class="fichas"></div>
+      <div class="map-foot">
+        <button class="btn alt" id="btnCasaPausa">Pausa</button>
+        <button class="btn alt" id="btnCasaSalir">Salir al inicio</button>
+      </div>
+    </div>
+  </section>
+
   <div id="sheet" class="sheet-back" hidden><div class="sheet" id="sheetBody"></div></div>
 </div>
 
+<script src="js/casa-sim.js"></script>
 <script src="js/juego.js"></script>
+<script src="js/casa.js"></script>
 </body>
 </html>
