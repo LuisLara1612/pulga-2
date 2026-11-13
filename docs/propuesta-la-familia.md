@@ -16,8 +16,8 @@ Documento original: https://claude.ai/artifact/L8VWM9v7pUz4g4eNstveAL
 ## 2. Alimentos
 
 - **Niños:** frituras (más crecimiento y reproducción), dulces (velocidad para esquivar peine, broches, cepillos y champú), piel seca (más dispersión de huevos y crías).
-- **Jóvenes (por confirmar):** sudor del deporte y grasa del pelo.
-- **Adultos (por confirmar):** comida escasa en la nuca y detrás de las orejas.
+- **Jóvenes:** sudor del deporte (recarga la energía de las habilidades) y grasa del pelo (mucha sangre, pero resbalas).
+- **Adultos:** comida escasa, solo en la nuca y detrás de las orejas.
 
 ## 3. Higiene
 
@@ -27,4 +27,13 @@ Documento original: https://claude.ai/artifact/L8VWM9v7pUz4g4eNstveAL
 
 ## 4. Modo primera persona
 
-Modo aparte en 3D para recorrer una cabeza desde los ojos de la pulga. La vista desde arriba sigue siendo el modo de estrategia.
+Modo aparte en 3D para recorrer una cabeza desde los ojos de la pulga: el pelo es un bosque, las uñas caen del cielo y el champú es una inundación. La vista desde arriba sigue siendo el modo de estrategia.
+
+Implementado como modo **Primera persona**: eliges una cabeza de la familia y ganas si sobrevives 2 baños y juntas 10 pulgas adultas. Usa las mismas reglas del modo Casa para esa cabeza y no toca las partidas guardadas. No incluye mascotas, saltos entre cabezas ni habilidades.
+
+## Estado
+
+- Secciones 1 a 3: implementadas como modo **Casa** (el juego de niveles sigue disponible como modo **Clásico**).
+- Sección 4: implementada como modo **Primera persona**.
+
+Los planes completos están en OpenSpec, en la carpeta `openspec/changes/` que está junto a `pulga-2` (fuera de este repositorio): `casa-con-familia/` y `modo-primera-persona/`.
